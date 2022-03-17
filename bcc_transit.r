@@ -65,15 +65,23 @@ trip_update[, start_datetime := as.POSIXct(paste(start_date, start_time), format
 
 
 ## stops table separated out - joins to trip_update table on trip_id/route_id
-stops <- cbind(
+stops <-cbind(
     trip_update[,c("trip_id","route_id")],
-    "stop_sequence"   = lapply(trip_update[["stop_time_update"]], red_ext, x=c("stop_sequence")),
-    "stop_id"         = lapply(trip_update[["stop_time_update"]], red_ext, x=c("stop_id")),
-    "arrival_time"    = lapply(trip_update[["stop_time_update"]], red_ext, x=c("arrival","time")),
-    "arrival_delay"   = lapply(trip_update[["stop_time_update"]], red_ext, x=c("arrival","delay")),
-    "departure_time"  = lapply(trip_update[["stop_time_update"]], red_ext, x=c("departure","time")),
-    "departure_delay" = lapply(trip_update[["stop_time_update"]], red_ext, x=c("departure","delay"))    
+    as.data.table(Map(
+        \(pth,data) lapply(data, red_ext, x=pth),
+        list(
+            "stop_sequence"   = c("stop_sequence"),
+            "stop_id"         = c("stop_id"),
+            "arrival_time"    = c("arrival","time"),
+            "arrival_delay"   = c("arrival","delay"),
+            "departure_time"  = c("departure","time"),
+            "departure_delay" = c("departure","delay")
+        ),
+        list(trip_update[["stop_time_update"]])
+    ))
 )
+## unlist to long form so each line is the record of the time/delay
+## at each stop for each service
 stops <- stops[, lapply(.SD, unlist), by=c("trip_id","route_id")]
 ## arrival and departure times as proper timestamps
 stops[, c("arrival_time","departure_time") := lapply(
@@ -90,11 +98,15 @@ trip_update[, stop_time_update := NULL]
 ####    META DATA    ####
 #########################
 
-## read in ALL the meta-data to use for making sense of the feed
-meta_lf <- list.files("meta/", pattern="\\.txt")
-meta <- setNames(lapply(meta_lf, \(x) fread(paste0("meta/", x)) ), sub("\\.txt", "", meta_lf) )
-
-names(meta)
+## Read in ALL the meta-data to use for making sense of the feed.
+## Used read.csv and converted to data.table afterwards instead of
+## fread(), just so built-in unzip() could be used directly.
+## Files aren't big, so isn't a bottleneck.
+meta_lf <- unzip("meta/SEQ_GTFS.zip", list=TRUE)$Name
+meta <- setNames(
+    lapply(meta_lf, \(x) as.data.table(read.csv(unz("meta/SEQ_GTFS.zip", x)))),
+    sub("\\.txt", "", meta_lf)
+)
 
 
 #########################
