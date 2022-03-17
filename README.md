@@ -6,6 +6,6 @@ The current feed specification and live files are available at: https://gtfsrt.a
 
 The OpenStreetMap basemap vector data (osm_australia/australia-latest.osm.pbf) is pulled from https://download.geofabrik.de/australia-oceania/australia.html - it's not stored here due to size limitations.
 
-## Example output
+## Example static output
 
 <img src="transit_result.png"  />
